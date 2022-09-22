@@ -1,13 +1,15 @@
 import { Query } from "appwrite";
 import { useEffect, useMemo, useState } from "react";
-import { useTable } from "react-table";
+import { useTable, useSortBy, usePagination } from "react-table";
 import { useRecoilValue } from "recoil";
+import categoriesAtom from "../../../atoms/categories.atom";
 import userAtom from "../../../atoms/user.atom";
 import { database } from "../../../utils/client";
 
 export default function Samplings() {
   const [samplings, setSamplings] = useState([]);
   const user = useRecoilValue(userAtom);
+  const categories = useRecoilValue(categoriesAtom);
   const columns = useMemo(
     () => [
       {
@@ -22,6 +24,10 @@ export default function Samplings() {
         Header: "Insuline",
         accessor: "insuline",
       },
+      {
+        Header: "Category",
+        accessor: "category",
+      },
     ],
     []
   );
@@ -30,6 +36,7 @@ export default function Samplings() {
       date: new Date(e.date).toLocaleString(),
       glycemie: e.glycemie,
       insuline: e.insuline,
+      category: categories.find((v) => v.$id == e.category)["name"],
     }));
   }, [samplings]);
 
@@ -57,13 +64,22 @@ export default function Samplings() {
     getData();
   }, []);
 
-  const table = useTable({ columns, data: rows });
+  const table = useTable({ columns, data: rows }, useSortBy, usePagination);
   const {
     getTableProps,
     getTableBodyProps,
     headerGroups,
-    rows: tableRows,
     prepareRow,
+    pageOptions,
+    pageCount,
+    page,
+    state: { pageIndex, pageSize },
+    gotoPage,
+    previousPage,
+    nextPage,
+    setPageSize,
+    canPreviousPage,
+    canNextPage,
   } = table;
 
   if (!samplings) return <div>no samplings</div>;
@@ -75,7 +91,16 @@ export default function Samplings() {
           {headerGroups.map((headerGroup) => (
             <tr {...headerGroup.getHeaderGroupProps()}>
               {headerGroup.headers.map((column) => (
-                <th {...column.getHeaderProps()}>{column.render("Header")}</th>
+                <th {...column.getHeaderProps(column.getSortByToggleProps())}>
+                  {column.render("Header")}
+                  <span>
+                    {column.isSorted
+                      ? column.isSortedDesc
+                        ? " 🔽"
+                        : " 🔼"
+                      : ""}
+                  </span>
+                </th>
               ))}
             </tr>
           ))}
@@ -83,7 +108,7 @@ export default function Samplings() {
         <tbody {...getTableBodyProps()}>
           {
             // Loop over the table rows
-            tableRows.map((row) => {
+            page.map((row) => {
               // Prepare the row for display
               prepareRow(row);
               return (
@@ -109,6 +134,57 @@ export default function Samplings() {
           }
         </tbody>
       </table>
+      <div className="w-full flex justify-center">
+        <div className="btn-group">
+          <button
+            className="btn"
+            onClick={() => gotoPage(0)}
+            disabled={!canPreviousPage}
+          >
+            {"<<"}
+          </button>{" "}
+          <button
+            className="btn"
+            onClick={() => previousPage()}
+            disabled={!canPreviousPage}
+          >
+            {"<"}
+          </button>{" "}
+          <button className="btn">
+            Page{" "}
+            <strong>
+              {pageIndex + 1} of {pageOptions.length}
+            </strong>{" "}
+          </button>
+          <button
+            className="btn"
+            onClick={() => nextPage()}
+            disabled={!canNextPage}
+          >
+            {">"}
+          </button>{" "}
+          <button
+            className="btn"
+            onClick={() => gotoPage(pageCount - 1)}
+            disabled={!canNextPage}
+          >
+            {">>"}
+          </button>{" "}
+          <select
+            className="select"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+            }}
+          >
+            {[10, 20, 30, 40, 50].map((pageSize) => (
+              <option key={pageSize} value={pageSize}>
+                Show {pageSize}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
     </div>
   );
 }
