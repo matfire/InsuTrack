@@ -1,13 +1,15 @@
 import { Query } from "appwrite";
 import { useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import { useTable, useSortBy, usePagination } from "react-table";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import categoriesAtom from "../../../atoms/categories.atom";
+import samplingsAtom from "../../../atoms/samplings.atom";
 import userAtom from "../../../atoms/user.atom";
 import { database } from "../../../utils/client";
 
 export default function Samplings() {
-  const [samplings, setSamplings] = useState([]);
+  const [samplings, setSamplings] = useRecoilState(samplingsAtom);
   const user = useRecoilValue(userAtom);
   const categories = useRecoilValue(categoriesAtom);
   const columns = useMemo(
@@ -28,41 +30,41 @@ export default function Samplings() {
         Header: "Category",
         accessor: "category",
       },
+      {
+        Header: "Actions",
+        accessor: "actions",
+      },
     ],
     []
   );
   const rows = useMemo(() => {
     return samplings.map((e) => ({
-      date: new Date(e.date).toLocaleString(),
+      date: new Date(e.date).toLocaleString(["fr"]),
       glycemie: e.glycemie,
       insuline: e.insuline,
       category: categories.find((v) => v.$id == e.category)["name"],
+      actions: (
+        <>
+          <button
+            className="btn btn-error"
+            onClick={async () => {
+              if (confirm("Do you really want to remove this sampling?")) {
+                toast.loading("removing sampling record", { id: "remove" });
+                database.deleteDocument(
+                  process.env.NEXT_PUBLIC_DB_NAME,
+                  process.env.NEXT_PUBLIC_SAMPLING_TABLE,
+                  e.$id
+                );
+                toast.success("sampling removed", { id: "remove" });
+              }
+            }}
+          >
+            Delete
+          </button>
+        </>
+      ),
     }));
   }, [samplings]);
-
-  useEffect(() => {
-    const getData = async () => {
-      let offset = 0;
-      let data = [];
-      while (true) {
-        const tmp = await database.listDocuments(
-          process.env.NEXT_PUBLIC_DB_NAME,
-          process.env.NEXT_PUBLIC_SAMPLING_TABLE,
-          [
-            Query.limit(100),
-            Query.offset(100 * offset),
-            Query.equal("user", user?.$id),
-          ]
-        );
-        data = [...data, ...tmp.documents];
-        if (data.length >= tmp.total) break;
-        offset += 1;
-      }
-      setSamplings(data, user);
-    };
-
-    getData();
-  }, []);
 
   const table = useTable({ columns, data: rows }, useSortBy, usePagination);
   const {
@@ -183,6 +185,9 @@ export default function Samplings() {
               </option>
             ))}
           </select>
+        </div>
+        <div className="justify-self-end">
+          <button className="btn">CSV</button>
         </div>
       </div>
     </div>

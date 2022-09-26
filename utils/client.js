@@ -1,4 +1,4 @@
-import { Account, Client, Databases } from "appwrite";
+import { Account, Client, Databases, Functions } from "appwrite";
 
 const client = new Client()
   .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_URL)
@@ -6,6 +6,7 @@ const client = new Client()
 
 const account = new Account(client);
 const database = new Databases(client);
+const functions = new Functions(client);
 
 const createSamplingRecord = async (data) => {
   return await database.createDocument(
@@ -16,5 +17,16 @@ const createSamplingRecord = async (data) => {
   );
 };
 
+const sendVerificationEmail = async () => {};
+
+const verifyEmail = async () => {};
+
 export default client;
-export { account, database, createSamplingRecord };
+export {
+  account,
+  database,
+  createSamplingRecord,
+  functions,
+  sendVerificationEmail,
+  verifyEmail,
+};
